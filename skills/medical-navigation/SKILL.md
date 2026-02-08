@@ -1,324 +1,476 @@
 ---
 name: medical-navigation
-description: Medical triage assistance that helps users determine which medical department to visit. Use when users describe symptoms and need guidance on which department to register with. Guides users through structured symptom collection (pain location, fever status, associated symptoms) and provides department recommendations based on the collected information.
+description: 基于《物理诊断学》教材的全科智能导诊。通过教材规范的问诊流程（5轮问诊覆盖病因、发生机制、临床表现、伴随症状），系统收集患者症状信息，结合诊断思路分析，最终给出挂号科室推荐。适用于患者描述症状后需要导诊挂号的场景。
 ---
 
-# Medical Navigation
+# 全科智能导诊（基于教材问诊规范）
 
-## Overview
+## 概述
 
-This skill provides a structured conversation framework for helping users identify which medical department to visit based on their symptoms. The process involves progressive symptom assessment through targeted questions, collecting key diagnostic information, and providing appropriate department recommendations.
+本技能为面向患者的完整导诊业务流程，基于项目中 **BOOK 目录下的教材内容**（《物理诊断学》第一篇「诊断篇」），通过规范的问诊流程收集症状信息，给出诊断思路分析和科室推荐。
 
-## Symptom Collection Workflow
+### 核心特点
 
-**IMPORTANT**: Limit conversation to maximum 5 AI responses (excluding final recommendation).
+1. **教材依据**：问诊维度完全来自教材，覆盖全部 **19 个常见症状**
+2. **结构化问诊**：5 轮问诊覆盖「主诉→现病史→加重/缓解→伴随症状→补充信息」
+3. **双重输出**：诊断思路分析 + 科室推荐（含紧急程度判断）
+4. **急诊拦截**：任意轮次发现急诊指征立即中断问诊
 
-### Step 1: User Information Collection (Response 1)
+### 覆盖的 19 个症状
 
-Before symptom assessment, collect basic user information:
+发热、胸痛、腹痛、头痛与头晕、咳嗽与咳痰、呼吸困难、咯血、发绀、心悸、黄疸、呕血与便血、恶心呕吐、腹泻与便秘、尿频尿急尿痛、血尿、少尿无尿、水肿、意识障碍、热性惊厥
 
-**Ask in one response:**
-"好的，我来帮您了解应该挂哪个科的号。请问您的姓名和手机号是？"
+---
 
-Wait for user to provide both name and phone number together.
+## 教材依据
 
-### Step 2: Initial Symptom Identification (Response 2)
+- **知识来源**：`BOOK/` 目录下教材扫描页（IMG_1091 ~ IMG_1112，共 22 页）
+- **教材结构**：常见症状按 **常见病因 → 发生机制 → 临床表现 → 伴随症状 → 诊断思路** 编排
+- **问诊框架**：教材「问诊的主要内容」包括一般项目、主诉、现病史（部位/性质/时间/程度/加重缓解）、既往史、家族史
+- **参考文件**：
+  - `references/department-mapping.md` — 19症状→科室映射规则
+  - `references/symptom-inquiry-guide.md` — 按主诉的问诊路径速查
+  - `../diagnostic-reasoning/` — 问诊框架来源
 
-When a user describes a symptom (e.g., "腹痛", "肚子疼"), begin systematic information gathering:
+---
 
-**Ask combined question covering multiple aspects:**
-1. **Pain location** - Where is the pain? (Use 3×3 quadrant system if needed)
-2. **Fever status** - Any fever? Temperature?
-3. **Duration** - How long has the pain lasted?
-4. **Severity** - Mild, moderate, or severe?
+## 业务流程
 
-**Example combined question:**
-"请问您感觉哪里疼？（上左、上中、上右、中左、中中、中右、下左、下中、下右）有没有发烧？疼了多久了？疼痛程度是轻微、中等还是剧烈？"
+### 急诊拦截机制（任意轮次触发）
 
-Wait for comprehensive response.
+在问诊过程中，**一旦**发现以下任何急诊指征，**立即停止后续问诊**，直接输出急诊建议：
 
-### Step 3: Associated Symptoms (Response 3)
+| 急诊指征 | 症状类别 |
+|---------|---------|
+| 🔴 高热（>39°C）伴意识障碍或精神恍惚 | 发热 |
+| 🔴 剧烈胸痛伴大汗、面色苍白、血压下降 | 胸痛 |
+| 🔴 大咯血（>100ml）或持续咯血不止 | 咯血 |
+| 🔴 剧烈腹痛伴板状腹（腹肌紧张如木板） | 腹痛 |
+| 🔴 严重呼吸困难（端坐呼吸、口唇发紫） | 呼吸困难 |
+| 🔴 意识丧失或昏迷 | 神经 |
+| 🔴 突发剧烈头痛伴颈强直 | 头痛 |
+| 🔴 大量呕血或便血伴休克征象（头晕、冷汗、脉速） | 消化道出血 |
+| 🔴 婴幼儿惊厥持续 >5 分钟 | 热性惊厥 |
 
-Based on previous response, ask about relevant associated symptoms in one combined question:
+**急诊输出格式**：
+```markdown
+## 🚨 急诊建议
 
-**Ask combined question covering multiple aspects:**
-- **Timeline**: If fever - did pain start first or fever first?
-- **GI symptoms**: Nausea, vomiting, diarrhea, constipation, blood in stool
-- **Urinary symptoms**: Difficulty urinating, blood in urine
-- **Other**: Recent eating history, previous similar episodes
+**检测到急诊指征**：[具体描述，如"剧烈胸痛伴大汗、面色苍白"]
 
-**Example combined question:**
-"如果有发烧，是先疼还是先发烧？有没有恶心、呕吐、拉肚子、便秘、便血？有没有尿频、尿急、尿痛、尿血？最近有没有吃什么不干净的东西？有没有过类似的肚子疼？"
+**请立即拨打 120 或前往最近医院急诊科！**
 
-Wait for comprehensive response.
+**等待期间注意事项**：
+- [针对性急救要点，如"保持坐位、不要平躺"]
 
-### Step 4: Additional Assessment (Response 4 - Only if needed)
-
-If critical information is still missing, ask specific follow-up questions combined into one response:
-
-**Examples of combined follow-up:**
-- For appendicitis suspicion: "按压右下腹后放手时会不会更疼？咳嗽或活动时疼痛会不会加重？有没有食欲不振？"
-- For intestinal obstruction suspicion: "有没有排气（放屁）和排便？肚子是不是胀得很厉害？今天有没有吃东西？"
-- For general cases: "能不能正常活动？疼痛是胀痛、隐痛还是刺痛？有没有觉得身体发冷或发抖？"
-
-Skip this step if sufficient information is already collected from previous responses.
-
-### Step 5: Department Recommendation (Response 5)
-
-Based on collected information, provide department recommendation.
-
-#### For Headache
-
-1. **Location**: Front, back, sides, whole head?
-2. **Fever**: Current or recent fever?
-3. **Associated symptoms**: Nausea? Vision changes? Neck stiffness?
-4. **Trauma**: Recent head injury?
-
-#### For Chest Pain
-
-1. **Location**: Left side, right side, center, radiating?
-2. **Character**: Sharp, dull, pressure, burning?
-3. **Associated**: Shortness of breath? Sweating? Nausea?
-4. **Trigger**: Exertion? Rest? Eating?
-
-### Step 5: Department Recommendation
-
-Based on collected information, provide department recommendation WITH reasons:
-
-**Format:**
-```
-推荐科室：[科室名称]
-
-原因：[简短说明为什么推荐这个科室，基于症状位置、伴随症状等]
-
-紧急程度：[急诊/门诊] - [简要说明]
-
-注意事项：[如有特殊注意事项，如建议尽快就医、禁食禁水等]
+**声明**：本系统检测到可能危及生命的紧急情况，请立即寻求专业医疗救助。
 ```
 
-**Example:**
+---
+
+### 第 1 轮：患者登记与主诉确认
+
+#### 收集内容
+1. **姓名**、**手机号**（导诊业务需要登记）
+2. **主诉**（最痛苦的症状及持续时间）
+3. **年龄**、**性别**（与科室选择相关）
+
+#### AI 内部动作
+根据主诉关键词匹配教材 19 症状之一，加载对应的问诊维度（参见 `references/symptom-inquiry-guide.md`）。
+
+#### 示例对话
 ```
-推荐科室：消化内科
+AI：您好，我是您的智能导诊助手。请问您的姓名和手机号是？您今天最主要的不舒服是什么？大概持续多久了？您的年龄和性别？
 
-原因：根据您的描述，上腹部疼痛伴有恶心症状，位置在上中区域，常见于胃炎或胃溃疡等问题。
-
-紧急程度：门诊 - 目前症状可预约门诊就诊
-
-注意事项：建议尽快就医，就诊前避免进食刺激性食物
+用户：我叫李明，手机13812345678。我肚子疼，有3天了。今年35岁，男。
 ```
 
-### Step 6: Final Output Format
+#### 主诉识别与症状匹配
 
-After providing department recommendation, output the complete conversation in table format:
+| 患者可能的表述 | 匹配教材症状 | 加载问诊维度 |
+|--------------|-------------|-------------|
+| "发烧"、"体温高"、"忽冷忽热" | 发热 | symptom-inquiry-guide.md → 发热 |
+| "肚子疼"、"胃疼"、"腹部不舒服"、"拉肚子" | 腹痛 / 腹泻 | 腹痛或腹泻 |
+| "胸口疼"、"心口痛"、"胸闷" | 胸痛 | 胸痛 |
+| "头疼"、"头昏"、"头晕"、"眩晕" | 头痛与头晕 | 头痛与头晕 |
+| "咳嗽"、"咳痰"、"嗓子痒想咳" | 咳嗽与咳痰 | 咳嗽与咳痰 |
+| "喘不上气"、"呼吸困难"、"气短" | 呼吸困难 | 呼吸困难 |
+| "咳血"、"痰里有血"、"吐血" | 咯血 | 咯血 |
+| "嘴唇发紫"、"手脚发紫" | 发绀 | 发绀 |
+| "心慌"、"心跳快"、"心悸" | 心悸 | 心悸 |
+| "皮肤黄"、"眼睛黄"、"尿黄" | 黄疸 | 黄疸 |
+| "吐血"、"大便黑"、"便血" | 呕血与便血 | 呕血与便血 |
+| "恶心"、"想吐"、"呕吐" | 恶心呕吐 | 恶心呕吐 |
+| "小便次数多"、"尿急"、"尿痛" | 尿频尿急尿痛 | 尿频尿急尿痛 |
+| "尿血"、"小便红" | 血尿 | 血尿 |
+| "小便少"、"没尿" | 少尿无尿 | 少尿无尿 |
+| "肿"、"水肿"、"腿肿"、"脸肿" | 水肿 | 水肿 |
+| "叫不醒"、"昏迷"、"意识不清"（家属代述） | 意识障碍 | 意识障碍 |
+| "抽筋"、"抽搐"、"惊厥"（婴幼儿） | 热性惊厥 | 热性惊厥 |
 
-**Use this format to display the full dialogue:**
+---
 
-| | |
-|---|---|
-| **用户** | [用户输入 1] |
-| **AI** | [AI 回复 1] |
-| **用户** | [用户输入 2] |
-| **AI** | [AI 回复 2] |
+### 第 2 轮：现病史核心要素
+
+#### 询问内容（按教材「现病史」结构）
+根据主诉匹配的症状，询问：
+- **部位**：症状具体位置
+- **性质**：疼痛/不适的性质
+- **程度**：轻、中、重或能否忍受
+- **持续时间与发作特点**：持续还是阵发、多久、有无规律
+
+#### 不同主诉的问法示例
+
+**腹痛**（使用九宫格）：
+```
+AI：请问疼痛具体在肚子的哪个位置？如果把肚子分成 3×3 的格子（上左、上中、上右、中左、中中、中右、下左、下中、下右），是哪个位置疼呢？是什么样的疼法（隐痛、胀痛、绞痛、刺痛）？大概有多疼？是持续疼还是一阵一阵的？
+```
+
+**胸痛**：
+```
+AI：请问胸痛具体在什么位置（胸骨后、左侧、右侧、心前区）？是什么样的感觉（压榨感、刺痛、烧灼感、撕裂感）？每次持续多久（几秒钟、几分钟、几小时）？有没有向左肩、左臂、后背或下巴放射？
+```
+
+**头痛**：
+```
+AI：请问头痛在哪个部位（额头、两侧太阳穴、后脑勺、全头）？是单侧还是双侧？是什么样的疼法（一跳一跳的搏动痛、像有东西箍着、电击样）？程度是轻微、中等还是很剧烈？
+```
+
+**发热**：
+```
+AI：请问体温最高到多少度？是怎么升高的（突然升高还是慢慢升高）？发热有没有规律（一直烧、一阵一阵、早晚重）？有没有感觉发冷、寒战？
+```
+
+**呼吸困难**：
+```
+AI：请问是吸气困难、呼气困难，还是两者都有？呼吸困难有多严重（轻微活动就喘、安静时也喘、不能平躺睡觉）？是突然开始的还是逐渐加重的？
+```
+
+---
+
+### 第 3 轮：加重/缓解因素与演变
+
+#### 询问内容
+- **加重因素**：什么情况下加重（活动、体位、进食、呼吸、情绪等）
+- **缓解因素**：什么情况下减轻或缓解
+- **演变趋势**：从发病到现在是加重、减轻还是稳定
+- **新出现的症状**：有无新的不舒服
+
+#### 示例对话
+```
+AI：请问做什么动作或什么情况下会更难受或更舒服（比如走路、躺下、吃饭、深呼吸）？从开始到现在，症状是越来越重、差不多还是有好转？有没有出现新的不舒服（比如之前不疼的地方现在疼了）？
+```
+
+**关键鉴别点**（不同症状的关注重点）：
+- **腹痛**：与进食关系（空腹/餐后）、与体位关系、排便后是否缓解
+- **胸痛**：与劳力/情绪关系、与呼吸/体位关系、硝酸酯是否缓解
+- **头痛**：与咳嗽/体位/活动关系、与光线/声音关系
+- **呼吸困难**：与活动/体位关系（端坐呼吸）、夜间是否加重
+
+---
+
+### 第 4 轮：伴随症状（按教材对应症状清单）
+
+#### 询问结构
+1. **全身症状**：发热、寒战、乏力、体重变化
+2. **与主诉系统相关的伴随症状**（从 `symptom-inquiry-guide.md` 查找对应条目）
+3. **其他相关**：饮食、二便、睡眠、既往类似发作、用药与疗效
+
+#### 腹痛的伴随症状示例
+```
+AI：请问有没有以下情况：
+- 全身：发烧、发冷、没力气？
+- 消化：恶心、想吐、拉肚子、便秘、大便带血或发黑？
+- 泌尿：小便次数多、尿急、尿痛、尿血？
+- 其他：最近吃了什么（尤其是不干净或油腻的食物）？以前有没有类似肚子疼？
+```
+
+#### 胸痛的伴随症状示例
+```
+AI：请问有没有以下情况：
+- 呼吸：咳嗽、咳痰、喘不上气？
+- 循环：心慌、心跳快、出冷汗、面色苍白？
+- 其他：吞咽困难、烧心反酸？最近有没有感冒或受凉？
+```
+
+#### 呼吸困难的伴随症状示例
+```
+AI：请问有没有以下情况：
+- 呼吸：咳嗽、咳痰（痰是什么颜色）、喘鸣音（呼噜呼噜的声音）？
+- 循环：心慌、胸痛、下肢水肿？
+- 全身：发烧、嘴唇或手指发紫？
+- 其他：最近有没有感冒、有没有心脏病或肺病史？
+```
+
+---
+
+### 第 5 轮：补充与鉴别信息（仅在必要时）
+
+#### 询问内容
+- **既往史**：手术史、慢性病（高血压、糖尿病、心脏病等）、过敏史
+- **特殊人群**：
+  - **女性**：月经史、末次月经、是否可能怀孕
+  - **儿童**：年龄与发育情况
+  - **老年人**：心脑血管病史
+
+#### 示例对话（女性下腹痛）
+```
+AI：请问您上次月经是什么时候来的？月经规律吗？有没有可能怀孕（有没有停经）？
+```
+
+#### 示例对话（老年人）
+```
+AI：请问您以前有没有高血压、糖尿病、心脏病或中风的病史？最近有没有在吃什么药（尤其阿司匹林、止痛药等）？
+```
+
+**注意**：若前几轮信息已足够支撑科室推荐，可**跳过此轮**，直接进入最终输出。
+
+---
+
+### 第 6 步：诊断思路分析与科室推荐（最终输出）
+
+**输出格式**（必须严格遵循）：
+
+```markdown
+## 导诊结果
+
+### 一、信息小结
+- **患者**：[姓名]，[年龄][性别]，联系方式：[手机号]
+- **主诉**：[主诉与持续时间]
+- **要点**：[部位、性质、程度、时间、加重/缓解、伴随症状等 2～3 行概括]
+
+### 二、诊断思路分析（基于教材）
+
+#### 可能疾病方向
+| 优先级 | 疾病方向 | 支持要点 |
+|:------:|---------|---------|
+| 🟡 | [方向1] | [与教材临床表现吻合的要点] |
+| 🟢 | [方向2] | [与教材临床表现吻合的要点] |
+
+#### 鉴别要点
+- [支持/不支持某方向的关键症状，引用教材机制或临床表现]
+
+### 三、科室推荐
+
+**推荐科室**：[科室名称]
+
+**推荐原因**：[基于诊断思路分析，说明为什么推荐该科室]
+
+**紧急程度**：[🔴 立即急诊 / 🟡 尽快就诊（24小时内） / 🟢 普通门诊] - [说明]
+
+**建议检查**：
+- [检查项目1]
+- [检查项目2]
+
+**就诊前注意事项**：
+- [注意事项1]
+- [注意事项2]
+
+⚠️ **需立即就医的情况**（警示信号）：
+- [该病情可能恶化的警示征象1]
+- [该病情可能恶化的警示征象2]
+
+### 四、对话记录
+
+| 角色 | 内容 |
+|------|------|
+| 用户 | [用户输入1] |
+| AI | [AI回复1] |
+| 用户 | [用户输入2] |
 | ... | ... |
-| **AI** | [科室推荐] |
 
-**Example complete output:**
-
-| | |
-|---|---|
-| **用户** | 我肚子疼 |
-| **AI** | 好的，我来帮您了解应该挂哪个科的号。请问您的姓名是？ |
-| **用户** | 张三 |
-| **AI** | 请问您的手机号是？ |
-| **用户** | 13912345678 |
-| **AI** | 好的，张三。请问您感觉哪里疼？如果把肚子分成 3×3 的格子（上左、上中、上右、中左、中中、中右、下左、下中、下右），是哪个位置疼呢？ |
-| **用户** | 上中 |
-| **AI** | 明白，是上中腹疼痛。请问有没有发烧？如果有发烧的话，体温是多少度？ |
-| **用户** | 没有发烧 |
-| **AI** | 好的，没有发烧。请问有没有恶心、想呕吐？有没有拉肚子（腹泻）或者便秘？ |
-| **用户** | 有点恶心，没有拉肚子 |
-| **AI** | 好的，张三，根据您提供的信息，我来给您科室建议：<br><br>---<br><br>**推荐科室：消化内科**<br><br>**原因：** 根据您的描述，上中腹疼痛伴恶心症状，常见于胃炎或胃溃疡等消化系统问题，建议消化内科进一步检查和治疗。<br><br>**紧急程度：门诊** - 目前症状可预约门诊就诊，建议尽快就医。<br><br>**注意事项：**<br>- 就诊前避免进食刺激性食物<br>- 建议清淡饮食<br>- 如症状加重请及时就医<br><br>---<br><br>**重要提醒：** 本指引仅供科室导航，不构成医疗建议或诊断。请务必到医院由专业医生进行诊断和治疗。如有任何疑问或症状加重，请及时就医。 |
-
-### Department Recommendation Logic
-
-Use the `references/department-mapping.md` for detailed department mapping rules. Key principles:
-
-1. **Emergency indicators take priority**
-   - High fever (>39°C) with severe symptoms → Emergency
-   - Severe pain with shock symptoms → Emergency
-   - Sudden onset with concerning symptoms → Emergency
-
-2. **Chronic vs. Acute**
-   - Chronic/recurring symptoms → Outpatient specialist
-   - Acute recent symptoms → General Medicine or specific department
-
-3. **Location-based mapping**
-   - Abdominal pain location strongly influences department (see reference)
-   - Specific symptom patterns map to specific departments
-
-4. **Age and special considerations**
-   - Children → Pediatrics
-   - Pregnancy-related → Obstetrics & Gynecology
-   - Elderly patients → Geriatrics when appropriate
-
-## Reference Resources
-
-### Department Mapping (references/department-mapping.md)
-
-Load this reference for detailed department recommendation rules based on symptom patterns. Contains:
-- Abdominal pain quadrant mapping
-- Symptom-department association tables
-- Emergency criteria
-- Special patient considerations
-
-**Use this reference when:**
-- Determining department for abdominal pain
-- Mapping specific symptom combinations
-- Checking emergency criteria
-- Validating department recommendations
-
-### Emergency Triage Criteria
-
-**Call 120/911 or go to Emergency immediately if:**
-- Difficulty breathing or shortness of breath
-- Chest pain with pressure or squeezing sensation
-- Severe abdominal pain with fever and rigid abdomen
-- High fever (>39°C) with confusion or severe pain
-- Sudden, severe headache with neck stiffness
-- Major trauma or injury
-
-**Warning signs requiring urgent medical attention:**
-- Blood in vomit, stool, or urine
-- Persistent fever (>38.5°C) for >3 days
-- Severe pain not relieved by rest or medication
-- Sudden onset of severe symptoms
-
-## Best Practices
-
-### Questioning Strategy
-
-1. **Combine multiple questions in each response**
-    - Ask 3-5 related questions together to stay within 5-response limit
-    - Group questions logically (e.g., all GI symptoms together, all urinary symptoms together)
-    - Use clear numbering or bullet points for readability
-
-2. **Use accessible language**
-    - Avoid medical jargon
-    - Use clear, everyday language
-    - Explain medical terms when necessary
-
-3. **Prioritize critical information**
-    - Ask about pain location, fever, duration, and severity first
-    - Focus on symptoms that affect department recommendation
-    - Skip non-essential details to stay within response limit
-
-4. **Be efficient**
-    - Don't repeat questions that were already answered
-    - Skip to recommendation if sufficient information is collected
-    - Maximum 5 AI responses before final recommendation
-
-### Information Gathering
-
-**Collect these key elements for each case:**
-- Primary symptom and characteristics
-- Location (when applicable)
-- Duration and timeline
-- Associated symptoms
-- Fever status and timeline
-- Any previous similar episodes
-- Relevant medical history (if volunteered)
-
-**Do NOT attempt to diagnose** - only collect symptoms for department guidance
-
-### Tone and Approach
-
-- Empathetic and supportive
-- Clear and direct
-- Reassuring but realistic
-- Non-judgmental
-- Encourage seeking professional medical care
-
-## Important Notes
-
-### This Skill Does NOT
-
-- Diagnose medical conditions
-- Provide medical advice or treatment recommendations
-- Replace professional medical consultation
-- Guarantee accuracy of department suggestions
-
-### This Skill DOES
-
-- Guide systematic symptom collection
-- Provide department recommendations based on patterns
-- Help users navigate healthcare systems
-- Assist with understanding symptom significance
-
-### Disclaimer
-
-Always include medical disclaimer when providing recommendations:
-
-*"This guidance is for department navigation purposes only and does not constitute medical advice or diagnosis. Please consult a qualified healthcare professional for proper medical evaluation and treatment. If experiencing severe symptoms or difficulty breathing, call emergency services immediately."*
-
-## Workflow Example
-
-### User: "我肚子疼"
-
-**Response 1 - User Information:**
-"好的，我来帮您了解应该挂哪个科的号。请问您的姓名和手机号是？"
-
-**User:** "张三，13812345678"
-
-**Response 2 - Location & Basic Info:**
-"请问您感觉哪里疼？（上左、上中、上右、中左、中中、中右、下左、下中、下右）有没有发烧？疼了多久了？疼痛程度是轻微、中等还是剧烈？"
-
-**User:** "下右，没有发烧，疼了半天，中等程度"
-
-**Response 3 - Associated Symptoms:**
-"有没有恶心、呕吐、拉肚子、便秘、便血？有没有尿频、尿急、尿痛、尿血？最近有没有吃什么不干净的东西？有没有过类似的肚子疼？"
-
-**User:** "有点恶心，没有拉肚子，最近没吃什么特别的，没得过类似的病"
-
-**Response 4 - Additional Assessment (Optional):**
-"按压右下腹后放手时会不会更疼？咳嗽或活动时疼痛会不会加重？有没有食欲不振？"
-
-**User:** "有点反跳痛，咳嗽时疼，没胃口"
-
-**Response 5 - Recommendation:**
-Based on collected information, provide formatted recommendation:
-
+---
+**声明**：以上仅为基于问诊信息的导诊建议与诊断思路分析，**不构成临床诊断**。请务必在医疗机构由医生完成病史采集、体格检查及辅助检查后做出诊断与治疗。如有紧急情况，请立即拨打120。
 ```
-推荐科室：普外科
-
-原因：右下腹疼痛伴反跳痛、咳嗽时疼痛加重、恶心、食欲不振，这些症状提示急性阑尾炎的可能性较大。
-
-紧急程度：门诊 - 建议尽快就医
-
-注意事项：
-- 建议禁食禁水
-- 尽快前往医院就诊
-- 如疼痛加重或出现发热，请立即去急诊
-```
-
-**Final Output with full dialogue table:**
-
-| | |
-|---|---|
-| **用户** | 我肚子疼 |
-| **AI** | 好的，我来帮您了解应该挂哪个科的号。请问您的姓名和手机号是？ |
-| **用户** | 张三，13812345678 |
-| **AI** | 请问您感觉哪里疼？（上左、上中、上右、中左、中中、中右、下左、下中、下右）有没有发烧？疼了多久了？疼痛程度是轻微、中等还是剧烈？ |
-| **用户** | 下右，没有发烧，疼了半天，中等程度 |
-| **AI** | 有没有恶心、呕吐、拉肚子、便秘、便血？有没有尿频、尿急、尿痛、尿血？最近有没有吃什么不干净的东西？有没有过类似的肚子疼？ |
-| **用户** | 有点恶心，没有拉肚子，最近没吃什么特别的，没得过类似的病 |
-| **AI** | 按压右下腹后放手时会不会更疼？咳嗽或活动时疼痛会不会加重？有没有食欲不振？ |
-| **用户** | 有点反跳痛，咳嗽时疼，没胃口 |
-| **AI** | 基于您的描述：<br><br>**推荐科室：普外科**<br><br>**原因：** 右下腹疼痛伴反跳痛、咳嗽时疼痛加重、恶心、食欲不振，这些症状提示急性阑尾炎的可能性较大。<br><br>**紧急程度：门诊** - 建议尽快就医<br><br>**注意事项：**<br>- 建议禁食禁水<br>- 尽快前往医院就诊<br>- 如疼痛加重或出现发热，请立即去急诊<br><br>**重要提醒：** 本指引仅供科室导航，不构成医疗建议或诊断。如有任何疑问或症状加重，请及时就医。 |
 
 ---
 
-**Important:** Maximum 5 AI responses before final recommendation. If critical information is already collected in earlier responses, skip to recommendation to stay within 5-response limit.
+## 问诊原则（与教材一致）
+
+1. **先开放后具体**：先让患者用自己的话描述，再按部位、性质、时间等具体追问
+2. **避免诱导**：不问"是不是左边疼？"而问"您疼的具体位置在哪里？"
+3. **合并提问**：每轮尽量 3～5 个相关问题合并问，控制轮数
+4. **用语通俗**：用患者能懂的说法（如"拉肚子"代替"腹泻"），必要时对应教材术语
+5. **善用教材**：问诊维度和诊断思路与 BOOK 中该症状的**病因、发生机制、临床表现、伴随症状**一致
 
 ---
 
-*Remember: The goal is to help users get to the right medical professional, not to diagnose their condition.*
+## 特殊人群处理
+
+| 人群 | 处理原则 |
+|------|---------|
+| **儿童（<14岁）** | 优先推荐 **儿科**；儿童腹痛模式与成人不同（肠套叠、Meckel憩室等） |
+| **孕产妇** | 优先推荐 **妇产科**；异位妊娠为致命急症 |
+| **老年人（>65岁）** | 注意不典型表现（可能疼痛不重但病情严重）；急诊阈值放低 |
+| **育龄女性** | 下腹痛必问月经史和妊娠可能 |
+| **热性惊厥（3个月-5岁）** | 按教材热性惊厥流程；单纯型→儿科；复杂型→急诊 |
+
+---
+
+## 完整示例
+
+### 示例 1：腹痛患者（急性阑尾炎）
+
+**第 1 轮**：
+```
+AI：您好，我是您的智能导诊助手。请问您的姓名和手机号是？您今天最主要的不舒服是什么？大概持续多久了？您的年龄和性别？
+
+用户：我叫张伟，手机13900139000。我肚子疼，右下腹疼，昨天下午开始的。28岁，男。
+```
+
+**第 2 轮**：
+```
+AI：明白，您是右下腹疼痛（下右），从昨天下午开始。请问是什么样的疼法（隐痛、胀痛、绞痛）？大概有多疼？是持续疼还是一阵一阵的？
+
+用户：一开始是肚脐周围隐隐作痛，后来转移到右下腹，变成持续的胀痛，中等程度，越来越疼。
+```
+
+**第 3 轮**：
+```
+AI：请问做什么动作或什么情况下会更疼或更舒服？按压右下腹后放手时会不会更疼？从开始到现在是越来越重吗？
+
+用户：按压右下腹后放手时更疼（反跳痛），走路和咳嗽时也会更疼。确实越来越重了。
+```
+
+**第 4 轮**：
+```
+AI：请问有没有以下情况：发烧或发冷？恶心、想吐？拉肚子或便秘？最近有没有吃什么不干净的东西？
+
+用户：有点低烧，大概37.5度。有点恶心，但没有吐。没有拉肚子，也没吃特别的东西。
+```
+
+**第 5 轮**：（信息已足够，跳过）
+
+**最终输出**：
+```markdown
+## 导诊结果
+
+### 一、信息小结
+- **患者**：张伟，28岁男性，联系方式：13900139000
+- **主诉**：转移性右下腹痛 1 天
+- **要点**：疼痛始于脐周后转移至右下腹（麦氏点），持续性胀痛伴反跳痛、咳嗽痛，低热 37.5℃，伴恶心
+
+### 二、诊断思路分析（基于教材）
+
+#### 可能疾病方向
+| 优先级 | 疾病方向 | 支持要点 |
+|:------:|---------|---------|
+| 🟡 | 急性阑尾炎 | 转移性右下腹痛（教材典型表现）、右下腹压痛反跳痛、伴低热恶心、咳嗽及活动加重 |
+| 🟢 | 回盲部炎症 | 右下腹痛伴发热，但无转移性腹痛特点 |
+
+#### 鉴别要点
+- 支持阑尾炎：典型的转移性腹痛（内脏痛→躯体痛）、反跳痛提示腹膜刺激征、咳嗽/活动加重提示局部腹膜炎
+- 不支持肠梗阻：无腹胀、无呕吐、有排气排便
+
+### 三、科室推荐
+
+**推荐科室**：**普外科**（普通外科）
+
+**推荐原因**：转移性右下腹痛伴腹膜刺激征（反跳痛），高度提示急性阑尾炎。普外科负责阑尾炎的诊断和手术治疗。
+
+**紧急程度**：🟡 **尽快就诊（24小时内）** - 急性阑尾炎若不及时处理可能穿孔，建议尽快就医。
+
+**建议检查**：
+- 血常规（白细胞是否升高）
+- 腹部超声或CT
+- 必要时术前检查
+
+**就诊前注意事项**：
+- **禁食禁水**（可能需要急诊手术）
+- 避免自行服用止痛药（掩盖症状）
+- 建议家属陪同
+
+⚠️ **需立即就医的情况**：
+- 腹痛突然加重或扩散至全腹（提示穿孔）
+- 高热寒战
+- 恶心呕吐加重
+- 出现心慌、出冷汗
+
+### 四、对话记录
+
+| 角色 | 内容 |
+|------|------|
+| 用户 | 我叫张伟，手机13900139000。我肚子疼，右下腹疼，昨天下午开始的。28岁，男。 |
+| AI | 明白，您是右下腹疼痛（下右），从昨天下午开始... |
+| ... | ... |
+
+---
+**声明**：以上仅为基于问诊信息的导诊建议与诊断思路分析，**不构成临床诊断**。请务必在医疗机构由医生完成病史采集、体格检查及辅助检查后做出诊断与治疗。如有紧急情况，请立即拨打120。
+```
+
+---
+
+### 示例 2：胸痛患者（急性心梗 - 含急诊拦截）
+
+**第 1 轮**：
+```
+AI：您好，请问您的姓名和手机号是？您今天最主要的不舒服是什么？
+
+用户：我叫王强，手机13800138000。我胸口疼，像有大石头压着，已经20分钟了，疼得受不了。56岁，男。
+```
+
+**第 2 轮**：
+```
+AI：请问胸痛具体在什么位置？是什么样的感觉？每次持续多久？有没有向左肩、左臂或后背放射？
+
+用户：就在胸口正中间，压榨一样的疼，一直疼到现在没有停。左手臂也麻，出冷汗。
+```
+
+**⚠️ 急诊拦截触发**：
+- 剧烈胸痛（压榨感）持续 >15 分钟
+- 伴大汗、左手臂放射痛
+
+**立即输出**：
+```markdown
+## 🚨 急诊建议
+
+**检测到急诊指征**：剧烈压榨性胸痛持续 >20 分钟，伴大汗、左上肢放射痛，高度怀疑急性心肌梗死。
+
+**请立即拨打 120 或前往最近医院急诊科！**
+
+**等待期间注意事项**：
+- 立即停止一切活动，保持安静，坐位或半卧位休息
+- 不要自行驾车前往医院
+- 如有硝酸甘油可舌下含服（如果血压不低）
+- 保持通风，解开紧身衣物
+- 记录症状开始时间
+
+**声明**：本系统检测到可能危及生命的紧急情况（急性冠脉综合征），请立即寻求专业医疗救助。时间就是心肌，时间就是生命！
+```
+
+---
+
+## 参考文件说明
+
+| 文件 | 用途 |
+|------|------|
+| `references/department-mapping.md` | 19症状→科室映射规则、急诊指征、腹痛九宫格、常见疾病模式 |
+| `references/symptom-inquiry-guide.md` | 按主诉的问诊路径速查（第2-5轮具体问什么） |
+| `../diagnostic-reasoning/SKILL.md` | 问诊框架与诊断思路输出格式来源 |
+| `../diagnostic-reasoning/references/inquiry-checklist.md` | 19症状完整问诊维度详情 |
+| `BOOK/` | 教材扫描页（IMG_1091-1112），按主诉加载对应页面 |
+
+---
+
+## 本技能所做 / 不做
+
+### 本技能所做
+
+✅ 按教材框架系统问诊（最多 5 轮）  
+✅ 收集病因线索、发生机制线索、临床表现、伴随症状  
+✅ 给出诊断思路分析（可能疾病方向、鉴别要点）  
+✅ 给出科室推荐（含原因、紧急程度、建议检查、注意事项）  
+✅ 任意轮次发现急诊指征立即中断并建议急诊  
+✅ 帮助用户理解症状意义、引导至合适的医疗专业
+
+### 本技能不做
+
+❌ 给出最终临床诊断  
+❌ 替代体格检查与辅助检查  
+❌ 给出具体用药或治疗方案  
+❌ 对急危重症延误急诊建议  
+❌ 保证科室建议的绝对准确性
+
+---
+
+**重要提醒**：本指引仅供科室导航与诊断思路参考，**不构成医疗建议或诊断**。请务必到医院由专业医生进行诊断和治疗。如有任何疑问或症状加重，请及时就医。
