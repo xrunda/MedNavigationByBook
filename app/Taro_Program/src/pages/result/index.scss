@@ -1,0 +1,110 @@
+.result-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 30px;
+}
+
+.result-header {
+  background-color: #fff;
+  border-radius: 24px;
+  padding: 40px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.result-title {
+  font-size: 40px;
+  font-weight: bold;
+  color: #1e293b;
+  margin-bottom: 16px;
+}
+
+.result-patient {
+  font-size: 28px;
+  color: #64748b;
+}
+
+.result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section {
+  background-color: #fff;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 32px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 20px;
+}
+
+.section-text {
+  font-size: 28px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.department-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.department-section .section-title {
+  color: #fff;
+}
+
+.department-card {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 30px;
+}
+
+.department-name {
+  font-size: 36px;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.department-reason {
+  font-size: 26px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+}
+
+.list-item {
+  font-size: 26px;
+  color: #475569;
+  line-height: 2;
+}
+
+.result-footer {
+  margin-top: 40px;
+  padding-bottom: 40px;
+}
+
+.back-btn {
+  width: 100%;
+  height: 100px;
+  background-color: #4f46e5;
+  color: #fff;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 32px;
+  border: none;
+
+  &::after {
+    border: none;
+  }
+}
+
+.btn-text {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
